@@ -1,0 +1,17 @@
+feature,psi,status
+predicted_score,0.0051,ok
+total_charges,0.0003,ok
+tenure_months,0.0002,ok
+monthly_charges,0.0002,ok
+internet_service,0.0001,ok
+dependents,0.0,ok
+partner,0.0,ok
+gender,0.0,ok
+tech_support,0.0,ok
+online_security,0.0,ok
+phone_service,0.0,ok
+contract,0.0,ok
+payment_method,0.0,ok
+paperless_billing,0.0,ok
+support_calls,0.0,ok
+late_payments,0.0,ok

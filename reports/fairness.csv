@@ -1,0 +1,5 @@
+group,value,n,churn_rate,auc,contact_rate,recall_of_contacted
+gender,Female,817,0.28,0.885,0.394,0.834
+gender,Male,783,0.249,0.868,0.35,0.759
+senior_citizen,0,1313,0.257,0.871,0.369,0.787
+senior_citizen,1,287,0.3,0.897,0.39,0.849

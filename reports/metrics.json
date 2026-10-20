@@ -1,0 +1,34 @@
+{
+  "model": "Logistic Regression",
+  "cv_auc": {
+    "Logistic Regression": 0.8666,
+    "Random Forest": 0.857,
+    "Gradient Boosting": 0.8601
+  },
+  "test_metrics": {
+    "roc_auc": 0.8768,
+    "pr_auc": 0.7363,
+    "brier": 0.1195,
+    "log_loss": 0.3748,
+    "lift_top_decile": 3.11,
+    "recall_in_top_20pct": 0.545,
+    "base_rate": 0.265
+  },
+  "uncalibrated_metrics": {
+    "roc_auc": 0.8766,
+    "pr_auc": 0.7395,
+    "brier": 0.1196,
+    "log_loss": 0.3759,
+    "lift_top_decile": 3.11,
+    "recall_in_top_20pct": 0.55,
+    "base_rate": 0.265
+  },
+  "profit": {
+    "contact_nobody": 0.0,
+    "contact_everybody": 12697.258399999993,
+    "model_rule": 41353.634799999985,
+    "perfect_knowledge": 59737.25839999999,
+    "customers_contacted": 596,
+    "share_contacted": 0.3725
+  }
+}
