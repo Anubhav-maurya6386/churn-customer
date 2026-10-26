@@ -86,3 +86,8 @@ Returns probability, risk tier, value at risk, expected profit, contact yes/no, 
 - Drivers show correlation, not causation; only an A/B test shows what actually retains customers.
 - The save rate, margin and offer cost are assumptions; profit results are only as good as these inputs.
 - Fairness check covers two attributes and is a screening step, not a legal compliance review.
+
+
+
+
+deployment link: https://churn-customer-r6xzhmctcbud7jubym8pv7.streamlit.app/
