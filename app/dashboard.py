@@ -11,20 +11,24 @@ from churn.predict import ChurnModel
 st.set_page_config(page_title="Churn Command Center", page_icon="📉", layout="wide")
 
 
-@st.cache_resource
+@st.cache_resource(show_spinner="Preparing the model for this server (first visit only, about 30 seconds)...")
 def get_model():
-    return ChurnModel.load()
+    from churn.data import load_data
+    try:
+        m = ChurnModel.load()
+        m.score(load_data().head(5), explain=False)   # can this server really use the saved file?
+        return m
+    except Exception:
+        # saved model was built with other library versions -> rebuild a light model with THIS server's versions
+        from churn.train import run
+        run(light=True, make_reports=False)
+        return ChurnModel.load()
 
 
 try:
     model = get_model()
-except FileNotFoundError as e:
-    st.error(str(e)); st.stop()
-except Exception as e:   # typically a scikit-learn version mismatch between training and this server
-    st.error("The saved model cannot be opened with the library versions installed on this server.\n\n"
-             f"Technical detail: {e}\n\n"
-             "Fix: retrain locally with the versions pinned in requirements.txt, then push artifacts/churn_model.joblib to GitHub.")
-    st.stop()
+except Exception as e:
+    st.error(f"Could not prepare the model: {e}"); st.stop()
 cfg, meta = load_config(), model.meta
 st.title("📉 Churn Command Center")
 st.caption(f"Model: {meta['model_family']} · v{meta['version']} · trained {meta['trained_at'][:10]} · "

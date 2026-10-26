@@ -58,7 +58,8 @@ def candidates(seed):
     }
 
 
-def run(cfg=None, df=None, artifacts_dir="artifacts", reports_dir="reports", fast=False, make_reports=True):
+def run(cfg=None, df=None, artifacts_dir="artifacts", reports_dir="reports", fast=False, make_reports=True, light=False):
+    """light=True: tiny, low-memory training (Logistic Regression only) used to rebuild a compatible model on small servers."""
     cfg = cfg or load_config()
     seed, tgt, idc = cfg["project"]["seed"], cfg["data"]["target"], cfg["data"]["id_col"]
     df = load_data(cfg) if df is None else df
@@ -66,15 +67,18 @@ def run(cfg=None, df=None, artifacts_dir="artifacts", reports_dir="reports", fas
     X_tr, X_te, y_tr, y_te = train_test_split(X, y, test_size=cfg["data"]["test_size"], stratify=y, random_state=seed)
     log.info("train=%d test=%d churn rate=%.1f%%", len(X_tr), len(X_te), y.mean() * 100)
 
-    folds = 2 if fast else cfg["model"]["cv_folds"]
-    n_iter = 1 if fast else cfg["model"]["search_iter"]
+    folds = 2 if fast else 3 if light else cfg["model"]["cv_folds"]
+    n_iter = 1 if fast else 3 if light else cfg["model"]["search_iter"]
     cv = StratifiedKFold(folds, shuffle=True, random_state=seed)
 
     # 1) tune every model family
     searches, test_raw = {}, {}
-    for name, (clf, space) in candidates(seed).items():
+    cands = candidates(seed)
+    if light:
+        cands = {"Logistic Regression": cands["Logistic Regression"]}
+    for name, (clf, space) in cands.items():
         s = RandomizedSearchCV(build_pipeline(clf), space, n_iter=n_iter, cv=cv, scoring="roc_auc",
-                               random_state=seed, n_jobs=1 if fast else -1, refit=True)
+                               random_state=seed, n_jobs=1 if (fast or light) else -1, refit=True)
         s.fit(X_tr, y_tr); searches[name] = s
         test_raw[name] = s.predict_proba(X_te)[:, 1]
         log.info("%-20s CV AUC=%.4f  test AUC=%.4f", name, s.best_score_, metrics(y_te, test_raw[name])["roc_auc"])
@@ -103,8 +107,11 @@ def run(cfg=None, df=None, artifacts_dir="artifacts", reports_dir="reports", fas
              profit["model_rule"], profit["contact_everybody"], profit["perfect_knowledge"])
 
     # 4) global importance + drift reference + baseline for local explanations
-    imp = permutation_importance(final, X_te, y_te, scoring="roc_auc", n_repeats=3 if fast else 5, random_state=seed, n_jobs=1 if fast else -1)
-    importance = pd.Series(imp.importances_mean, index=X.columns).sort_values(ascending=False)
+    if light:
+        importance = pd.Series(dtype=float)
+    else:
+        imp = permutation_importance(final, X_te, y_te, scoring="roc_auc", n_repeats=3 if fast else 5, random_state=seed, n_jobs=1 if fast else -1)
+        importance = pd.Series(imp.importances_mean, index=X.columns).sort_values(ascending=False)
     num_cols = X.select_dtypes("number").columns.tolist()
     baseline = {c: (X_tr[c].median() if c in num_cols else X_tr[c].mode().iloc[0]) for c in X.columns}
     baseline = {k: (v.item() if hasattr(v, "item") else v) for k, v in baseline.items()}
