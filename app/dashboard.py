@@ -11,9 +11,17 @@ from churn.predict import ChurnModel
 st.set_page_config(page_title="Churn Command Center", page_icon="📉", layout="wide")
 
 
-@st.cache_resource
+@st.cache_resource(show_spinner="Preparing the model for this server (first run only, about 1-2 minutes)...")
 def get_model():
-    return ChurnModel.load()
+    from churn.data import load_data
+    try:
+        m = ChurnModel.load()
+        m.score(load_data().head(5), explain=False)   # smoke test: can this server really use the file?
+        return m
+    except Exception:
+        from churn.train import run
+        run()                                          # retrain with THIS server's library versions
+        return ChurnModel.load()
 
 
 try:
