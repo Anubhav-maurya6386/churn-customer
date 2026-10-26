@@ -11,23 +11,20 @@ from churn.predict import ChurnModel
 st.set_page_config(page_title="Churn Command Center", page_icon="📉", layout="wide")
 
 
-@st.cache_resource(show_spinner="Preparing the model for this server (first run only, about 1-2 minutes)...")
+@st.cache_resource
 def get_model():
-    from churn.data import load_data
-    try:
-        m = ChurnModel.load()
-        m.score(load_data().head(5), explain=False)   # smoke test: can this server really use the file?
-        return m
-    except Exception:
-        from churn.train import run
-        run()                                          # retrain with THIS server's library versions
-        return ChurnModel.load()
+    return ChurnModel.load()
 
 
 try:
     model = get_model()
 except FileNotFoundError as e:
-    st.error(f"{e}"); st.stop()
+    st.error(str(e)); st.stop()
+except Exception as e:   # typically a scikit-learn version mismatch between training and this server
+    st.error("The saved model cannot be opened with the library versions installed on this server.\n\n"
+             f"Technical detail: {e}\n\n"
+             "Fix: retrain locally with the versions pinned in requirements.txt, then push artifacts/churn_model.joblib to GitHub.")
+    st.stop()
 cfg, meta = load_config(), model.meta
 st.title("📉 Churn Command Center")
 st.caption(f"Model: {meta['model_family']} · v{meta['version']} · trained {meta['trained_at'][:10]} · "
@@ -43,8 +40,11 @@ with t1:
         st.info("Upload a CSV to score customers.")
     else:
         if not up: st.caption(f"Showing demo data: {path.name}")
+        @st.cache_data(show_spinner="Scoring customers...")
+        def score_all(frame):
+            return model.score(frame, explain=False)
         try:
-            res = model.score(src)
+            res = score_all(src)
         except Exception as e:
             st.error(f"Could not score file: {e}"); st.stop()
         c = st.columns(4)
@@ -54,10 +54,12 @@ with t1:
         c[3].metric("Value at risk (contact list)", f"{res.loc[res.contact, 'value_at_risk'].sum():,.0f}")
         st.bar_chart(res["risk_tier"].value_counts().reindex(["HIGH", "MEDIUM", "LOW"]))
         only = st.checkbox("Show only customers worth contacting", True)
-        view = res[res.contact] if only else res
-        view = view.sort_values("expected_profit_if_contacted", ascending=False)
-        st.dataframe(view.head(500), width="stretch", hide_index=True)
-        st.download_button("⬇ Download contact list", view.to_csv(index=False), "contact_list.csv")
+        view = (res[res.contact] if only else res).sort_values("expected_profit_if_contacted", ascending=False)
+        st.caption("Table shows the top 300 with reasons and actions. The download contains the full list.")
+        top = view.head(300)
+        explained = model.score(src.loc[top.index])   # explanations only for the 300 rows on screen
+        st.dataframe(explained, hide_index=True)
+        st.download_button("Download full contact list", view.to_csv(index=False), "contact_list.csv")
 
 with t2:
     lv = meta["category_levels"]
